@@ -105,12 +105,13 @@ export default function Header({
             {[
               { full: "Deep Assessment", short: "Deep" },
               { full: "Comparison", short: "Compare" },
+              { full: "Prioritization", short: "Priority" },
             ].map((v) => (
               <button
                 key={v.full}
                 type="button"
                 onClick={() => onViewChange(v.full)}
-                className="px-2.5 sm:px-4 py-1.5 rounded-full transition-colors whitespace-nowrap"
+                className="px-1.5 sm:px-4 py-1.5 rounded-full transition-colors whitespace-nowrap"
                 style={{
                   backgroundColor: view === v.full ? "var(--color-accent)" : "transparent",
                   color: view === v.full ? "white" : "rgba(255,255,255,0.75)",

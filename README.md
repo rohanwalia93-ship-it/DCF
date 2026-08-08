@@ -29,6 +29,11 @@ client-specific information.
   model live, and read the auto-generated recommendation.
 - **Comparison** view: a ranked bar chart and a category heat map across all
   partners, reflecting the current weighting model.
+- **Prioritization** view: a 2×2 priority matrix plotting every partner on
+  Strategic & Commercial Value (Strategic Fit, Synergy, Market
+  Attractiveness) against Execution Confidence (Partner Strength, Risk &
+  Governance, Capability Fit) — a fast triage lens for where to focus next,
+  distinct from the full weighted verdict.
 
 See the in-app "How this works" drawer for the full methodology and
 weighting philosophy.

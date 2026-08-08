@@ -265,6 +265,49 @@ export function computeVerdict(scores, categories, weights) {
   return { verdict: VERDICT.DECLINE, score, redline };
 }
 
+// --- Prioritization matrix ----------------------------------------------
+// Two composite axes built from the default category keys, matching the
+// "value is created / protected" split explained in the methodology drawer.
+// Categories the user has renamed still match (key is stable); categories
+// the user has deleted or added are simply excluded from whichever bucket
+// they don't belong to, with a same-value fallback so the axis never NaNs.
+
+export const VALUE_AXIS_KEYS = ["strategicFit", "synergy", "marketAttractiveness"];
+export const CONFIDENCE_AXIS_KEYS = ["partnerStrength", "riskGovernance", "capabilityFit"];
+
+export const PRIORITY_QUADRANTS = {
+  PRIORITISE: "Prioritise",
+  DE_RISK: "De-risk First",
+  OPPORTUNISTIC: "Opportunistic",
+  DEPRIORITISE: "Deprioritise",
+};
+
+function axisAverage(scores, categories, keys) {
+  const matched = categories.filter((c) => keys.includes(c.key));
+  if (matched.length === 0) return null;
+  const vals = matched.map((c) => categoryAverage(scores, categories, c.key));
+  return vals.reduce((a, b) => a + b, 0) / vals.length;
+}
+
+/** { value, confidence } each 1-5. Falls back to the all-category average on either axis if no categories match its bucket (e.g. the user deleted or renamed away the underlying keys). */
+export function priorityAxes(scores, categories) {
+  const overall = categories.length
+    ? categories.reduce((sum, c) => sum + categoryAverage(scores, categories, c.key), 0) / categories.length
+    : 0;
+  const value = axisAverage(scores, categories, VALUE_AXIS_KEYS) ?? overall;
+  const confidence = axisAverage(scores, categories, CONFIDENCE_AXIS_KEYS) ?? overall;
+  return { value, confidence };
+}
+
+export function priorityQuadrant(value, confidence) {
+  const highValue = value >= 3;
+  const highConfidence = confidence >= 3;
+  if (highValue && highConfidence) return PRIORITY_QUADRANTS.PRIORITISE;
+  if (highValue && !highConfidence) return PRIORITY_QUADRANTS.DE_RISK;
+  if (!highValue && highConfidence) return PRIORITY_QUADRANTS.OPPORTUNISTIC;
+  return PRIORITY_QUADRANTS.DEPRIORITISE;
+}
+
 /** Score band colour for slider/heatmap coding, 1-5 scale. */
 export function bandColorFor1to5(value) {
   if (value >= 4) return "var(--color-pursue)";

@@ -4,6 +4,7 @@ import MethodologyDrawer from "./components/MethodologyDrawer";
 import PrintReport from "./components/PrintReport";
 import DeepAssessment from "./views/DeepAssessment";
 import Comparison from "./views/Comparison";
+import Prioritization from "./views/Prioritization";
 import {
   DEFAULT_CATEGORIES,
   DEFAULT_STAGE,
@@ -272,8 +273,10 @@ export default function App() {
               onAddCategory={handleAddCategory}
               onRemoveCategory={handleRemoveCategory}
             />
-          ) : (
+          ) : view === "Comparison" ? (
             <Comparison partners={partners} categories={categories} weights={weights} />
+          ) : (
+            <Prioritization partners={partners} categories={categories} weights={weights} />
           )}
         </main>
 
