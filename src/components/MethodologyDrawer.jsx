@@ -121,14 +121,6 @@ export default function MethodologyDrawer({ open, onClose }) {
               story alone.
             </p>
           </section>
-
-          <div
-            className="rounded-lg px-3.5 py-3 text-xs"
-            style={{ backgroundColor: "var(--color-surface)", color: "var(--color-ink-500)" }}
-          >
-            All data in this tool is illustrative sample data for demonstration purposes and does
-            not represent any real organisation. All scoring state lives in your browser only.
-          </div>
         </div>
       </div>
     </div>
