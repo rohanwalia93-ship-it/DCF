@@ -1,4 +1,79 @@
-export default function Header({ view, onViewChange, onOpenMethodology }) {
+import { useEffect, useRef, useState } from "react";
+
+function DataMenu({ onExportJson, onImportClick, onResetToSample }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onClick = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    const onKey = (e) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("mousedown", onClick);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onClick);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const items = [
+    { label: "Export workspace (JSON)", action: onExportJson },
+    { label: "Import workspace…", action: onImportClick },
+    { label: "Reset to sample data", action: onResetToSample, danger: true },
+  ];
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border"
+        style={{ borderColor: "rgba(255,255,255,0.25)", color: "rgba(255,255,255,0.85)" }}
+        aria-haspopup="menu"
+        aria-expanded={open}
+      >
+        Data
+        <svg width="10" height="10" viewBox="0 0 24 24" style={{ transform: open ? "rotate(180deg)" : "none" }}>
+          <path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+      {open && (
+        <div
+          role="menu"
+          className="absolute right-0 mt-2 w-56 rounded-lg border bg-white shadow-lg py-1.5 z-40"
+          style={{ borderColor: "rgba(11,31,51,0.1)" }}
+        >
+          {items.map((item) => (
+            <button
+              key={item.label}
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                item.action();
+              }}
+              className="w-full text-left text-sm px-3.5 py-2 hover:bg-black/5"
+              style={{ color: item.danger ? "var(--color-decline)" : "var(--color-ink-800)" }}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function Header({
+  view,
+  onViewChange,
+  onOpenMethodology,
+  onExportJson,
+  onImportClick,
+  onResetToSample,
+}) {
   return (
     <header
       className="sticky top-0 z-30 border-b backdrop-blur"
@@ -47,6 +122,9 @@ export default function Header({ view, onViewChange, onOpenMethodology }) {
               </button>
             ))}
           </nav>
+          <div className="hidden sm:block">
+            <DataMenu onExportJson={onExportJson} onImportClick={onImportClick} onResetToSample={onResetToSample} />
+          </div>
           <button
             type="button"
             onClick={onOpenMethodology}
@@ -65,6 +143,9 @@ export default function Header({ view, onViewChange, onOpenMethodology }) {
             ?
           </button>
         </div>
+      </div>
+      <div className="sm:hidden flex justify-end px-3 pb-2 -mt-1">
+        <DataMenu onExportJson={onExportJson} onImportClick={onImportClick} onResetToSample={onResetToSample} />
       </div>
     </header>
   );

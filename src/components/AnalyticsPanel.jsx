@@ -6,12 +6,15 @@ import {
   computeVerdict,
   categoryAverages,
   generateNarrative,
+  RISK_CATEGORY_KEY,
+  RISK_REDLINE_THRESHOLD,
 } from "../lib/framework";
 
-export default function AnalyticsPanel({ partnerName, scores, weights }) {
-  const { verdict, score, redline } = computeVerdict(scores, weights);
-  const averages = categoryAverages(scores);
-  const narrative = generateNarrative(partnerName, scores, weights);
+export default function AnalyticsPanel({ partnerName, scores, categories, weights, exportSlot }) {
+  const { verdict, score, redline } = computeVerdict(scores, categories, weights);
+  const averages = categoryAverages(scores, categories);
+  const narrative = generateNarrative(partnerName, scores, categories, weights);
+  const riskCategory = categories.find((c) => c.key === RISK_CATEGORY_KEY);
 
   return (
     <div className="space-y-5">
@@ -19,6 +22,7 @@ export default function AnalyticsPanel({ partnerName, scores, weights }) {
         className="rounded-xl border bg-white p-5 flex flex-col items-center"
         style={{ borderColor: "rgba(11,31,51,0.1)" }}
       >
+        {exportSlot && <div className="self-end mb-1">{exportSlot}</div>}
         <DecisionGauge score={score} verdict={verdict} />
         <div className="mt-2">
           <VerdictBadge verdict={verdict} size="lg" />
@@ -40,8 +44,9 @@ export default function AnalyticsPanel({ partnerName, scores, weights }) {
               />
             </svg>
             <span>
-              <strong>Red-line triggered:</strong> Risk &amp; Governance average is below 2.0.
-              Verdict forced to Conditional regardless of overall score.
+              <strong>Red-line triggered:</strong> {riskCategory?.name ?? "Risk & Governance"} average is
+              below {RISK_REDLINE_THRESHOLD.toFixed(1)}. Verdict forced to Conditional regardless of overall
+              score.
             </span>
           </div>
         )}
@@ -51,14 +56,14 @@ export default function AnalyticsPanel({ partnerName, scores, weights }) {
         <h3 className="font-display font-semibold text-sm mb-3" style={{ color: "var(--color-ink-950)" }}>
           Category Radar
         </h3>
-        <RadarChart averages={averages} />
+        <RadarChart averages={averages} categories={categories} />
       </div>
 
       <div className="rounded-xl border bg-white p-5" style={{ borderColor: "rgba(11,31,51,0.1)" }}>
         <h3 className="font-display font-semibold text-sm mb-4" style={{ color: "var(--color-ink-950)" }}>
           Weighted Contribution
         </h3>
-        <ContributionBars scores={scores} weights={weights} />
+        <ContributionBars scores={scores} categories={categories} weights={weights} />
       </div>
 
       <div

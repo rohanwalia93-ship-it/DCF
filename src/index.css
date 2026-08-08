@@ -66,6 +66,15 @@
       scroll-behavior: auto !important;
     }
   }
+
+  @media print {
+    @page {
+      margin: 16mm;
+    }
+    body {
+      background: white;
+    }
+  }
 }
 
 @layer utilities {

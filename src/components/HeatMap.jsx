@@ -1,15 +1,6 @@
-import { CATEGORIES, categoryAverages, computeVerdict, bandColorFor0to100 } from "../lib/framework";
-
-const SHORT_LABELS = {
-  strategicFit: "Strategic Fit",
-  synergy: "Synergy",
-  partnerStrength: "Partner Strength",
-  marketAttractiveness: "Market Attract.",
-  capabilityFit: "Capability Fit",
-  riskGovernance: "Risk & Gov.",
-  culturalFit: "Cultural Fit",
-  esg: "ESG",
-};
+import { categoryAverages, computeVerdict, bandColorFor0to100 } from "../lib/framework";
+import { shortLabel } from "../lib/text";
+import StageBadge from "./StageBadge";
 
 function cellColor(value) {
   // 1 -> decline red, 3 -> explore amber, 5 -> pursue green, interpolated
@@ -36,24 +27,32 @@ function textColorFor(value) {
   return value <= 1.6 || value >= 3.4 ? "white" : "#3a2a05";
 }
 
-export default function HeatMap({ partners, weights }) {
+export default function HeatMap({ partners, categories, weights }) {
   const rows = partners.map((p) => ({
     partner: p,
-    averages: categoryAverages(p.scores),
-    ...computeVerdict(p.scores, weights),
+    averages: categoryAverages(p.scores, categories),
+    ...computeVerdict(p.scores, categories, weights),
   }));
+
+  if (rows.length === 0) {
+    return (
+      <p className="text-sm py-6 text-center" style={{ color: "var(--color-ink-500)" }}>
+        No partners match the current filter.
+      </p>
+    );
+  }
 
   return (
     <div className="overflow-x-auto -mx-1">
-      <table className="w-full border-collapse min-w-[720px]">
+      <table className="w-full border-collapse min-w-[760px]">
         <thead>
           <tr>
             <th className="text-left text-xs font-medium pb-2 px-2 sticky left-0 bg-inherit" style={{ color: "var(--color-ink-500)" }}>
               Partner
             </th>
-            {CATEGORIES.map((cat) => (
+            {categories.map((cat) => (
               <th key={cat.key} className="text-center text-[10.5px] font-medium pb-2 px-1.5" style={{ color: "var(--color-ink-500)" }}>
-                {SHORT_LABELS[cat.key]}
+                {shortLabel(cat.name)}
               </th>
             ))}
             <th className="text-right text-xs font-semibold pb-2 px-2" style={{ color: "var(--color-ink-950)" }}>
@@ -65,9 +64,12 @@ export default function HeatMap({ partners, weights }) {
           {rows.map((r) => (
             <tr key={r.partner.id}>
               <td className="text-sm font-medium py-1.5 px-2 whitespace-nowrap" style={{ color: "var(--color-ink-950)" }}>
-                {r.partner.name}
+                <div className="flex items-center gap-1.5">
+                  {r.partner.name}
+                  <StageBadge stage={r.partner.stage} />
+                </div>
               </td>
-              {CATEGORIES.map((cat) => {
+              {categories.map((cat) => {
                 const val = r.averages[cat.key];
                 return (
                   <td key={cat.key} className="p-1">

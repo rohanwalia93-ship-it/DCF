@@ -1,7 +1,9 @@
 // Strategic Partnership Assessment — scoring framework
-// All state derives from this file's constants + pure functions.
+// Categories are data, not a fixed schema: every scoring function below takes
+// the current `categories` array as a parameter so the framework itself can
+// be edited (renamed, added to, trimmed) at runtime.
 
-export const CATEGORIES = [
+export const DEFAULT_CATEGORIES = [
   {
     key: "strategicFit",
     name: "Strategic Fit & Alignment",
@@ -100,8 +102,13 @@ export const CATEGORIES = [
   },
 ];
 
+// Anchor key for the hard red-line rule. This category can be renamed but
+// never deleted from the framework editor, so the rule always has a target.
 export const RISK_CATEGORY_KEY = "riskGovernance";
 export const RISK_REDLINE_THRESHOLD = 2.0;
+
+export const DEAL_STAGES = ["Screening", "Diligence", "Negotiation", "Closed"];
+export const DEFAULT_STAGE = "Screening";
 
 export const VERDICT = {
   PURSUE: "Pursue",
@@ -133,33 +140,72 @@ export const VERDICT_META = {
   },
 };
 
-export function defaultWeights() {
+function uid(prefix) {
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+export function createCriterion(name = "New criterion") {
+  return { key: uid("crit"), name };
+}
+
+export function createCategory(name = "New Category") {
+  return {
+    key: uid("cat"),
+    name,
+    defaultWeight: 5,
+    description: "",
+    criteria: [createCriterion("New criterion")],
+  };
+}
+
+export function defaultWeights(categories) {
   const weights = {};
-  for (const cat of CATEGORIES) weights[cat.key] = cat.defaultWeight;
+  for (const cat of categories) weights[cat.key] = cat.defaultWeight;
   return weights;
 }
 
-export function defaultScores() {
+export function defaultScores(categories) {
   const scores = {};
-  for (const cat of CATEGORIES) {
+  for (const cat of categories) {
     scores[cat.key] = {};
     for (const crit of cat.criteria) scores[cat.key][crit.key] = 3;
   }
   return scores;
 }
 
-/** Category average (1-5) from its 3 sub-criteria. */
-export function categoryAverage(scores, categoryKey) {
-  const cat = CATEGORIES.find((c) => c.key === categoryKey);
-  if (!cat) return 0;
+/** Fill in any category/criterion scores missing from a partner's score map (e.g. after a framework edit), defaulting to a neutral 3. */
+export function ensureScoreDefaults(scores, categories) {
+  const next = { ...scores };
+  for (const cat of categories) {
+    next[cat.key] = { ...next[cat.key] };
+    for (const crit of cat.criteria) {
+      if (typeof next[cat.key][crit.key] !== "number") next[cat.key][crit.key] = 3;
+    }
+  }
+  return next;
+}
+
+/** Fill in any category weights missing from the weight map (e.g. a newly added category), using its default weight. */
+export function ensureWeightDefaults(weights, categories) {
+  const next = { ...weights };
+  for (const cat of categories) {
+    if (typeof next[cat.key] !== "number") next[cat.key] = cat.defaultWeight;
+  }
+  return next;
+}
+
+/** Category average (1-5) from its sub-criteria. */
+export function categoryAverage(scores, categories, categoryKey) {
+  const cat = categories.find((c) => c.key === categoryKey);
+  if (!cat || cat.criteria.length === 0) return 0;
   const vals = cat.criteria.map((c) => scores[categoryKey]?.[c.key] ?? 0);
   return vals.reduce((a, b) => a + b, 0) / vals.length;
 }
 
 /** All category averages keyed by category key. */
-export function categoryAverages(scores) {
+export function categoryAverages(scores, categories) {
   const out = {};
-  for (const cat of CATEGORIES) out[cat.key] = categoryAverage(scores, cat.key);
+  for (const cat of categories) out[cat.key] = categoryAverage(scores, categories, cat.key);
   return out;
 }
 
@@ -175,12 +221,12 @@ export function weightsTotal(weights) {
 }
 
 /** Overall weighted score 0-100. */
-export function overallScore(scores, weights) {
+export function overallScore(scores, categories, weights) {
   const total = weightsTotal(weights);
   if (total <= 0) return 0;
   let sum = 0;
-  for (const cat of CATEGORIES) {
-    const avg = categoryAverage(scores, cat.key);
+  for (const cat of categories) {
+    const avg = categoryAverage(scores, categories, cat.key);
     const w = (weights[cat.key] ?? 0) / total;
     sum += (avg / 5) * w * 100;
   }
@@ -188,10 +234,10 @@ export function overallScore(scores, weights) {
 }
 
 /** Points out of 100 each category contributes to the overall score. */
-export function weightedContributions(scores, weights) {
+export function weightedContributions(scores, categories, weights) {
   const total = weightsTotal(weights);
-  return CATEGORIES.map((cat) => {
-    const avg = categoryAverage(scores, cat.key);
+  return categories.map((cat) => {
+    const avg = categoryAverage(scores, categories, cat.key);
     const w = total > 0 ? (weights[cat.key] ?? 0) / total : 0;
     return {
       key: cat.key,
@@ -204,14 +250,15 @@ export function weightedContributions(scores, weights) {
   });
 }
 
-export function isRiskRedline(scores) {
-  return categoryAverage(scores, RISK_CATEGORY_KEY) < RISK_REDLINE_THRESHOLD;
+export function isRiskRedline(scores, categories) {
+  if (!categories.some((c) => c.key === RISK_CATEGORY_KEY)) return false;
+  return categoryAverage(scores, categories, RISK_CATEGORY_KEY) < RISK_REDLINE_THRESHOLD;
 }
 
 /** Full verdict logic including hard red-line override. */
-export function computeVerdict(scores, weights) {
-  const score = overallScore(scores, weights);
-  const redline = isRiskRedline(scores);
+export function computeVerdict(scores, categories, weights) {
+  const score = overallScore(scores, categories, weights);
+  const redline = isRiskRedline(scores, categories);
   if (redline) return { verdict: VERDICT.CONDITIONAL, score, redline };
   if (score >= 70) return { verdict: VERDICT.PURSUE, score, redline };
   if (score >= 50) return { verdict: VERDICT.EXPLORE, score, redline };
@@ -245,14 +292,15 @@ function ordinalStrength(avg) {
  * Rule-based, board-ready narrative. No API calls — pure string composition
  * from the current scores/weights so it updates live with every slider drag.
  */
-export function generateNarrative(partnerName, scores, weights) {
-  const { verdict, score, redline } = computeVerdict(scores, weights);
-  const contributions = weightedContributions(scores, weights)
+export function generateNarrative(partnerName, scores, categories, weights) {
+  const { verdict, score, redline } = computeVerdict(scores, categories, weights);
+  const contributions = weightedContributions(scores, categories, weights)
     .slice()
     .sort((a, b) => b.average - a.average);
   const strongest = contributions.slice(0, 2);
   const weakest = contributions.slice(-2).reverse();
-  const riskAvg = categoryAverage(scores, RISK_CATEGORY_KEY);
+  const riskCategory = categories.find((c) => c.key === RISK_CATEGORY_KEY);
+  const riskAvg = riskCategory ? categoryAverage(scores, categories, RISK_CATEGORY_KEY) : null;
 
   const name = partnerName || "This opportunity";
   const sentences = [];
@@ -261,9 +309,9 @@ export function generateNarrative(partnerName, scores, weights) {
     `${name} scores ${score.toFixed(1)} out of 100 under the current weighting model, a result that ${VERDICT_META[verdict].summary}.`
   );
 
-  if (redline) {
+  if (redline && riskCategory) {
     sentences.push(
-      `This verdict is set to Conditional irrespective of the headline score: Risk & Governance averages ${riskAvg.toFixed(
+      `This verdict is set to Conditional irrespective of the headline score: ${riskCategory.name} averages ${riskAvg.toFixed(
         1
       )}/5, below the ${RISK_REDLINE_THRESHOLD.toFixed(
         1
@@ -271,27 +319,31 @@ export function generateNarrative(partnerName, scores, weights) {
     );
   }
 
-  sentences.push(
-    `The case is carried by ${strongest[0].name} (${strongest[0].average.toFixed(
-      1
-    )}/5) and ${strongest[1].name} (${strongest[1].average.toFixed(
-      1
-    )}/5), which together account for ${(
-      strongest[0].points + strongest[1].points
-    ).toFixed(1)} of the ${score.toFixed(1)} points on the board.`
-  );
+  if (strongest.length >= 2) {
+    sentences.push(
+      `The case is carried by ${strongest[0].name} (${strongest[0].average.toFixed(
+        1
+      )}/5) and ${strongest[1].name} (${strongest[1].average.toFixed(
+        1
+      )}/5), which together account for ${(
+        strongest[0].points + strongest[1].points
+      ).toFixed(1)} of the ${score.toFixed(1)} points on the board.`
+    );
+  }
 
-  sentences.push(
-    `The principal drags are ${weakest[0].name} (${weakest[0].average.toFixed(
-      1
-    )}/5) and ${weakest[1].name} (${weakest[1].average.toFixed(
-      1
-    )}/5) — ${
-      weakest[0].average < 3 || weakest[1].average < 3
-        ? "both warrant targeted diligence before this moves further, as either could reprice the deal."
-        : "neither is disqualifying on its own, but both are worth probing in the next round of diligence."
-    }`
-  );
+  if (weakest.length >= 2) {
+    sentences.push(
+      `The principal drags are ${weakest[0].name} (${weakest[0].average.toFixed(
+        1
+      )}/5) and ${weakest[1].name} (${weakest[1].average.toFixed(
+        1
+      )}/5) — ${
+        weakest[0].average < 3 || weakest[1].average < 3
+          ? "both warrant targeted diligence before this moves further, as either could reprice the deal."
+          : "neither is disqualifying on its own, but both are worth probing in the next round of diligence."
+      }`
+    );
+  }
 
   if (!redline) {
     const distToNext =
@@ -310,25 +362,28 @@ export function generateNarrative(partnerName, scores, weights) {
     }
   }
 
-  sentences.push(
-    `Overall assessment: ${ordinalStrength(
-      contributions.reduce((a, b) => a + b.average, 0) / contributions.length
-    )} across the framework on balance — the recommendation is to ${verdictAction(
-      verdict
-    )}.`
-  );
+  if (contributions.length > 0) {
+    sentences.push(
+      `Overall assessment: ${ordinalStrength(
+        contributions.reduce((a, b) => a + b.average, 0) / contributions.length
+      )} across the framework on balance — the recommendation is to ${verdictAction(
+        verdict,
+        riskCategory
+      )}.`
+    );
+  }
 
   return sentences.join(" ");
 }
 
-function verdictAction(verdict) {
+function verdictAction(verdict, riskCategory) {
   switch (verdict) {
     case VERDICT.PURSUE:
       return "advance to formal due diligence and term negotiation";
     case VERDICT.EXPLORE:
       return "commission targeted diligence on the weaker dimensions before committing further resource";
     case VERDICT.CONDITIONAL:
-      return "hold pending resolution of the Risk & Governance red-line, even though other dimensions may be favourable";
+      return `hold pending resolution of the ${riskCategory?.name ?? "Risk & Governance"} red-line, even though other dimensions may be favourable`;
     case VERDICT.DECLINE:
     default:
       return "decline at this time, absent a material change in terms or circumstances";
@@ -336,6 +391,8 @@ function verdictAction(verdict) {
 }
 
 // --- Seed data -------------------------------------------------------
+// Seed scores are keyed against DEFAULT_CATEGORIES' criterion keys and are
+// only meaningful when the framework hasn't been edited away from default.
 
 function s(strategicFit, synergy, partnerStrength, marketAttractiveness, capabilityFit, riskGovernance, culturalFit, esg) {
   return {
@@ -356,6 +413,7 @@ export function seedPartners() {
       id: "seed-alpha",
       name: "Alpha Holdings",
       note: "Illustrative sample data — clear Pursue candidate.",
+      stage: "Diligence",
       scores: s(
         [5, 4, 5],
         [4, 4, 5],
@@ -371,6 +429,7 @@ export function seedPartners() {
       id: "seed-northbridge",
       name: "Northbridge Group",
       note: "Illustrative sample data — strong upside, red-line risk trips Conditional.",
+      stage: "Screening",
       scores: s(
         [5, 5, 4],
         [5, 4, 4],
@@ -386,6 +445,7 @@ export function seedPartners() {
       id: "seed-summit",
       name: "Summit Ventures",
       note: "Illustrative sample data — middling all-rounder, Explore Further.",
+      stage: "Screening",
       scores: s(
         [3, 3, 3],
         [3, 3, 2],

@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { computeVerdict } from "../lib/framework";
-import { VERDICT_META } from "../lib/framework";
+import { computeVerdict, VERDICT_META } from "../lib/framework";
+import StageBadge from "./StageBadge";
 
-export default function PartnerSelector({ partners, weights, activeId, onSelect, onAdd, onRename, onRemove }) {
+export default function PartnerSelector({ partners, categories, weights, activeId, onSelect, onAdd, onRename, onRemove }) {
   const [editingId, setEditingId] = useState(null);
   const [draftName, setDraftName] = useState("");
 
@@ -21,7 +21,7 @@ export default function PartnerSelector({ partners, weights, activeId, onSelect,
   return (
     <div className="flex flex-wrap items-center gap-2">
       {partners.map((p) => {
-        const { verdict } = computeVerdict(p.scores, weights);
+        const { verdict } = computeVerdict(p.scores, categories, weights);
         const meta = VERDICT_META[verdict];
         const active = p.id === activeId;
         const isEditing = editingId === p.id;
@@ -60,6 +60,7 @@ export default function PartnerSelector({ partners, weights, activeId, onSelect,
             >
               <span className="rounded-full shrink-0" style={{ width: 7, height: 7, backgroundColor: meta.color }} />
               {p.name}
+              {!active && <StageBadge stage={p.stage} />}
               {partners.length > 1 && (
                 <span
                   role="button"

@@ -33,6 +33,26 @@ client-specific information.
 See the in-app "How this works" drawer for the full methodology and
 weighting philosophy.
 
+## Additional features
+
+- **Editable framework** — rename any category or sub-criterion, add or
+  remove sub-criteria, or add/remove whole categories from the "Edit
+  assessment framework" panel in Deep Assessment. Risk & Governance can be
+  renamed but not deleted, since the red-line rule depends on it. Newly
+  added items start at a neutral score of 3; renaming preserves existing
+  scores.
+- **Deal stage tracker** — tag each partner with a pipeline stage
+  (Screening → Diligence → Negotiation → Closed) from the selector next to
+  the partner chips, and filter the Comparison view by stage.
+- **PDF export** — the "Export PDF" button in Deep Assessment opens the
+  browser print dialog with a clean, board-ready one-page report for the
+  active partner (score, verdict, category breakdown, and narrative); choose
+  "Save as PDF" as the destination.
+- **Workspace backup/restore** — the "Data" menu in the header can export
+  the entire workspace (framework, weights, and all partners) as a JSON
+  file, re-import it later or on another device, or reset back to the
+  illustrative sample data.
+
 ## Tech stack
 
 - [Vite](https://vite.dev) + [React](https://react.dev)

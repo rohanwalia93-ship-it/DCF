@@ -1,45 +1,49 @@
-import { CATEGORIES } from "../lib/framework";
+import { shortLabel } from "../lib/text";
 
 const SIZE = 300;
 const CX = SIZE / 2;
 const CY = SIZE / 2;
-const R = 105;
+const R = 88;
 const MAX = 5;
 const RINGS = [1, 2, 3, 4, 5];
 
-function pointFor(index, value) {
-  const angle = (Math.PI * 2 * index) / CATEGORIES.length - Math.PI / 2;
+function pointFor(index, value, count) {
+  const angle = (Math.PI * 2 * index) / count - Math.PI / 2;
   const r = (value / MAX) * R;
   return { x: CX + r * Math.cos(angle), y: CY + r * Math.sin(angle) };
 }
 
-function labelPointFor(index) {
-  const angle = (Math.PI * 2 * index) / CATEGORIES.length - Math.PI / 2;
-  const r = R + 30;
+function labelPointFor(index, count) {
+  const angle = (Math.PI * 2 * index) / count - Math.PI / 2;
+  const r = R + 34;
   return { x: CX + r * Math.cos(angle), y: CY + r * Math.sin(angle) };
 }
 
-const SHORT_LABELS = {
-  strategicFit: "Strategic Fit",
-  synergy: "Synergy",
-  partnerStrength: "Partner Strength",
-  marketAttractiveness: "Market Attract.",
-  capabilityFit: "Capability Fit",
-  riskGovernance: "Risk & Gov.",
-  culturalFit: "Cultural Fit",
-  esg: "ESG",
-};
+export default function RadarChart({ averages, categories }) {
+  const count = categories.length;
+  if (count < 3) {
+    return (
+      <p className="text-xs text-center py-8" style={{ color: "var(--color-ink-500)" }}>
+        Add at least 3 categories to render a radar chart.
+      </p>
+    );
+  }
 
-export default function RadarChart({ averages }) {
-  const points = CATEGORIES.map((cat, i) => pointFor(i, averages[cat.key] ?? 0));
+  const points = categories.map((cat, i) => pointFor(i, averages[cat.key] ?? 0, count));
   const polygon = points.map((p) => `${p.x},${p.y}`).join(" ");
 
   return (
-    <svg viewBox={`0 0 ${SIZE} ${SIZE}`} className="w-full max-w-[340px] mx-auto" role="img" aria-label="Radar chart of category averages">
+    <svg
+      viewBox={`0 0 ${SIZE} ${SIZE}`}
+      className="w-full max-w-[300px] mx-auto"
+      style={{ overflow: "visible" }}
+      role="img"
+      aria-label="Radar chart of category averages"
+    >
       {RINGS.map((ring) => {
         const r = (ring / MAX) * R;
-        const ringPoints = CATEGORIES.map((_, i) => {
-          const angle = (Math.PI * 2 * i) / CATEGORIES.length - Math.PI / 2;
+        const ringPoints = categories.map((_, i) => {
+          const angle = (Math.PI * 2 * i) / count - Math.PI / 2;
           return `${CX + r * Math.cos(angle)},${CY + r * Math.sin(angle)}`;
         }).join(" ");
         return (
@@ -54,11 +58,11 @@ export default function RadarChart({ averages }) {
         );
       })}
 
-      {CATEGORIES.map((_, i) => {
-        const p = pointFor(i, MAX);
+      {categories.map((cat, i) => {
+        const p = pointFor(i, MAX, count);
         return (
           <line
-            key={i}
+            key={cat.key}
             x1={CX}
             y1={CY}
             x2={p.x}
@@ -80,11 +84,11 @@ export default function RadarChart({ averages }) {
         style={{ transition: "all 250ms ease" }}
       />
       {points.map((p, i) => (
-        <circle key={i} cx={p.x} cy={p.y} r="3" fill="var(--color-accent)" style={{ transition: "all 250ms ease" }} />
+        <circle key={categories[i].key} cx={p.x} cy={p.y} r="3" fill="var(--color-accent)" style={{ transition: "all 250ms ease" }} />
       ))}
 
-      {CATEGORIES.map((cat, i) => {
-        const lp = labelPointFor(i);
+      {categories.map((cat, i) => {
+        const lp = labelPointFor(i, count);
         const anchor = Math.abs(lp.x - CX) < 8 ? "middle" : lp.x > CX ? "start" : "end";
         return (
           <text
@@ -95,7 +99,7 @@ export default function RadarChart({ averages }) {
             dominantBaseline="middle"
             style={{ fontSize: "9.5px", fill: "var(--color-ink-700)", fontWeight: 500 }}
           >
-            {SHORT_LABELS[cat.key]}
+            {shortLabel(cat.name, 12)}
           </text>
         );
       })}

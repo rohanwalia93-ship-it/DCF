@@ -1,7 +1,7 @@
 import { weightedContributions } from "../lib/framework";
 
-export default function ContributionBars({ scores, weights }) {
-  const contributions = weightedContributions(scores, weights).sort(
+export default function ContributionBars({ scores, categories, weights }) {
+  const contributions = weightedContributions(scores, categories, weights).sort(
     (a, b) => b.points - a.points
   );
   const maxPoints = Math.max(...contributions.map((c) => c.maxPoints), 1);

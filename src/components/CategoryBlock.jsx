@@ -4,9 +4,9 @@ import { bandColorFor1to5, normalisedWeight } from "../lib/framework";
 
 export default function CategoryBlock({ category, scores, weights, onScoreChange, defaultOpen = false, isRedlineCategory, redlineActive }) {
   const [open, setOpen] = useState(defaultOpen);
-  const catScores = scores[category.key];
-  const average =
-    Object.values(catScores).reduce((a, b) => a + b, 0) / Object.values(catScores).length;
+  const catScores = scores[category.key] ?? {};
+  const values = category.criteria.map((c) => catScores[c.key] ?? 3);
+  const average = values.reduce((a, b) => a + b, 0) / values.length;
   const color = bandColorFor1to5(average);
   const weightPct = (normalisedWeight(weights, category.key) * 100).toFixed(0);
 
@@ -78,7 +78,7 @@ export default function CategoryBlock({ category, scores, weights, onScoreChange
             <ScoreSlider
               key={crit.key}
               label={crit.name}
-              value={catScores[crit.key]}
+              value={catScores[crit.key] ?? 3}
               onChange={(v) => onScoreChange(category.key, crit.key, v)}
             />
           ))}

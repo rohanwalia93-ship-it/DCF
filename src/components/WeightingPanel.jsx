@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { CATEGORIES, weightsTotal } from "../lib/framework";
+import { weightsTotal } from "../lib/framework";
 
-export default function WeightingPanel({ weights, onWeightChange, onReset }) {
+export default function WeightingPanel({ categories, weights, onWeightChange, onReset }) {
   const [open, setOpen] = useState(false);
   const total = weightsTotal(weights);
   const totalOk = Math.abs(total - 100) < 0.01;
@@ -56,31 +56,34 @@ export default function WeightingPanel({ weights, onWeightChange, onReset }) {
               Reset to default
             </button>
           </div>
-          {CATEGORIES.map((cat) => (
-            <div key={cat.key}>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="text-sm" style={{ color: "var(--color-ink-800)" }}>{cat.name}</label>
-                <span className="font-mono-num text-sm font-semibold" style={{ color: "var(--color-ink-950)" }}>
-                  {weights[cat.key]}%
-                </span>
+          {categories.map((cat) => {
+            const w = weights[cat.key] ?? 0;
+            return (
+              <div key={cat.key}>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-sm" style={{ color: "var(--color-ink-800)" }}>{cat.name}</label>
+                  <span className="font-mono-num text-sm font-semibold" style={{ color: "var(--color-ink-950)" }}>
+                    {w}%
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={40}
+                  step={1}
+                  value={w}
+                  onChange={(e) => onWeightChange(cat.key, Number(e.target.value))}
+                  className="range-thumb w-full"
+                  style={{
+                    background: `linear-gradient(to right, var(--color-ink-700) 0%, var(--color-ink-700) ${
+                      (w / 40) * 100
+                    }%, rgba(93,143,181,0.18) ${(w / 40) * 100}%, rgba(93,143,181,0.18) 100%)`,
+                  }}
+                  aria-label={`${cat.name} weight`}
+                />
               </div>
-              <input
-                type="range"
-                min={0}
-                max={40}
-                step={1}
-                value={weights[cat.key]}
-                onChange={(e) => onWeightChange(cat.key, Number(e.target.value))}
-                className="range-thumb w-full"
-                style={{
-                  background: `linear-gradient(to right, var(--color-ink-700) 0%, var(--color-ink-700) ${
-                    (weights[cat.key] / 40) * 100
-                  }%, rgba(93,143,181,0.18) ${(weights[cat.key] / 40) * 100}%, rgba(93,143,181,0.18) 100%)`,
-                }}
-                aria-label={`${cat.name} weight`}
-              />
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
